@@ -3,8 +3,8 @@ package render
 import (
 	"bytes"
 	"fmt"
-	"github.com/CS-PCockrill/bookings-app/pkg/config"
-	"github.com/CS-PCockrill/bookings-app/pkg/models"
+	config2 "github.com/CS-PCockrill/bookings-app/internal/config"
+	models2 "github.com/CS-PCockrill/bookings-app/internal/models"
 	"github.com/justinas/nosurf"
 	"html/template"
 	"log"
@@ -14,20 +14,23 @@ import (
 
 var functions = template.FuncMap{}
 
-var app *config.AppConfig
+var app *config2.AppConfig
 
 // NewTemplates sets the config for the template package
-func NewTemplates(a *config.AppConfig) {
+func NewTemplates(a *config2.AppConfig) {
 	app = a
 }
 
-func AddDefaultData(td *models.TemplateData, r *http.Request) *models.TemplateData {
+func AddDefaultData(td *models2.TemplateData, r *http.Request) *models2.TemplateData {
+	td.Flash = app.Session.PopString(r.Context(), "flash")
+	td.Warning = app.Session.PopString(r.Context(), "warning")
+	td.Error = app.Session.PopString(r.Context(), "error")
 	td.CSRFToken = nosurf.Token(r)
 	return td
 }
 
 // RenderTemplate renders a template
-func RenderTemplate(w http.ResponseWriter, tmpl string, td *models.TemplateData, r *http.Request) {
+func RenderTemplate(w http.ResponseWriter, tmpl string, td *models2.TemplateData, r *http.Request) {
 	var tc map[string]*template.Template
 
 	if app.UseCache {
