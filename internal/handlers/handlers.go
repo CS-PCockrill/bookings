@@ -5,6 +5,7 @@ import (
 	"fmt"
 	config2 "github.com/CS-PCockrill/bookings-app/internal/config"
 	"github.com/CS-PCockrill/bookings-app/internal/forms"
+	"github.com/CS-PCockrill/bookings-app/internal/helpers"
 	models2 "github.com/CS-PCockrill/bookings-app/internal/models"
 	render2 "github.com/CS-PCockrill/bookings-app/internal/render"
 	"log"
@@ -33,25 +34,13 @@ func NewHandlers(r *Repository) {
 
 // Home is the handler for the home page
 func (m *Repository) Home(w http.ResponseWriter, r *http.Request) {
-	remoteIP := r.RemoteAddr
-	m.App.Session.Put(r.Context(), "remote_ip", remoteIP)
-
 	render2.RenderTemplate(w, "home.page.tmpl", &models2.TemplateData{}, r)
 }
 
 // About is the handler for the about page
 func (m *Repository) About(w http.ResponseWriter, r *http.Request) {
-	// perform some logic
-	stringMap := make(map[string]string)
-	stringMap["test"] = "Hello, again"
-
-	remoteIP := m.App.Session.GetString(r.Context(), "remote_ip")
-	stringMap["remote_ip"] = remoteIP
-
 	// send data to the template
-	render2.RenderTemplate(w, "about.page.tmpl", &models2.TemplateData{
-		StringMap: stringMap,
-	}, r)
+	render2.RenderTemplate(w, "about.page.tmpl", &models2.TemplateData{}, r)
 }
 
 // Reservation renders the make a reservation page and displays form
@@ -71,9 +60,10 @@ func (m *Repository) PostReservation(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		// Can/could update to render 404 template page
-		log.Println(err)
+		helpers.ServerError(w, err)
 		return
 	}
+
 	reservation := models2.Reservation {
 		FirstName: r.Form.Get("first_name"),
 		LastName: r.Form.Get("last_name"),
@@ -83,8 +73,8 @@ func (m *Repository) PostReservation(w http.ResponseWriter, r *http.Request) {
 
 	form := forms.New(r.PostForm)
 
-	form.Required("first_name", "last_name", "email")
-	form.MinLength("first_name", 3, r)
+	form.Required("first_name", "last_name", "email", "phone")
+	form.MinLength("first_name", 3)
 	form.ValidateEmail("email")
 
 	if !form.Valid() {
@@ -135,7 +125,8 @@ func (m *Repository) AvailabilityJSON(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := json.MarshalIndent(resp, "", "    ")
 	if err != nil {
-		log.Println(err)
+		helpers.ServerError(w, err)
+		return
 	}
 
 	log.Println(string(out))
@@ -151,7 +142,7 @@ func (m *Repository) Contact(w http.ResponseWriter, r *http.Request) {
 func (m *Repository) ReservationSummary(w http.ResponseWriter, r *http.Request) {
 	reservation, ok := m.App.Session.Get(r.Context(), "reservation").(models2.Reservation)
 	if !ok {
-		log.Println("Cannot get item from session.")
+		m.App.ErrorLog.Println("Can't get error from session")
 		m.App.Session.Put(r.Context(), "error", "Can't get reservation from session.")
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
